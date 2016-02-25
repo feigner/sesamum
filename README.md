@@ -10,12 +10,10 @@ Inspired by [cli-ec2-allow-pub-ip](https://github.com/jgraglia/cli-ec2-allow-pub
 
 * Python 2.x
 * [Boto](https://github.com/boto/boto)
-* [Virtualenv 13.1+](https://virtualenv.readthedocs.org/en/latest/)
 
 ## Installation
 
-	virtualenv env
-	./env/bin/pip install -r requirements.txt
+	pip install -r requirements.txt
 
 Note: Boto requires your AWS secret key in `~/.boto` or `~/.aws/credentials` -- see [their docs](http://docs.pythonboto.org/en/latest/boto_config_tut.html) for more info.
 
