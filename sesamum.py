@@ -1,21 +1,21 @@
 #!/usr/bin/env python
 
-import click
-import boto.ec2
-import ConfigParser
 import os
 import re
 import sys
 import urllib2
+import ConfigParser
+import click
+import boto.ec2
 
 
 @click.command()
 @click.argument('ports', nargs=-1)
-@click.option('-c','--config', default="sesamum.conf", help='Config file')
-@click.option('-d','--dry-run', default=False, type=bool, help='Perform all operations in dry run')
-@click.option('-r','--region', default='us-west-2', help='The AWS region to target')
-@click.option('-p','--profile', default='staging', help='The boto credentials profile to use')
-@click.option('-l','--list-groups', is_flag=True, help='List all security groups for a given region / profile')
+@click.option('-c', '--config', default="sesamum.conf", help='Config file')
+@click.option('-d', '--dry-run', default=False, type=bool, help='Perform all operations in dry run')
+@click.option('-r', '--region', default='us-west-2', help='The AWS region to target')
+@click.option('-p', '--profile', default='staging', help='The boto credentials profile to use')
+@click.option('-l', '--list-groups', is_flag=True, help='List all security groups for a given region / profile')
 def main(ports, config, dry_run, region, profile, list_groups):
 
     print ANSI.PURP + " ___  ___ ___  __ _ _ __ ___  _   _ _ __ ___"
@@ -61,6 +61,7 @@ def get_ec2_connection(region, profile):
         print '  %s' % e.message
     sys.exit(1)
 
+
 def parse_groups(ports):
     # drop malformed port args, then build up a dict of security groups to operate on
     # {'i-1234567': ['1123', '5813'], 'foo': ['1123']}
@@ -73,7 +74,7 @@ def parse_groups(ports):
 
 def get_public_ip():
     headers = {'User-Agent': 'Lynx/2.8.8dev.3 libwww-FM/2.14 LOL/4.2.0 SSL-MM/1.4.1'}
-    return urllib2.urlopen(urllib2.Request('http://checkip.amazonaws.com', None, headers )).read().strip()
+    return urllib2.urlopen(urllib2.Request('http://checkip.amazonaws.com', None, headers)).read().strip()
 
 
 def lookup_security_group(conn, label):
