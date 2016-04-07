@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import argparse
+import click
 import boto.ec2
 import ConfigParser
 import os
@@ -9,25 +9,41 @@ import sys
 import urllib2
 
 
-# cli colors
-class ANSI:
-    PURP = '\033[95m'
-    GREEN = '\033[92m'
-    YELLOW = '\033[93m'
-    RED = '\033[91m'
-    ENDC = '\033[0m'
+@click.command()
+@click.argument('ports', nargs=-1)
+@click.option('-c','--config', default="sesamum.conf", help='Config file')
+@click.option('-d','--dry-run', default=False, type=bool, help='Perform all operations in dry run')
+@click.option('-r','--region', default='us-west-2', help='The AWS region to target')
+@click.option('-p','--profile', default='staging', help='The boto credentials profile to use')
+@click.option('-l','--list-groups', is_flag=True, help='List all security groups for a given region / profile')
+def main(ports, config, dry_run, region, profile, list_groups):
 
+    print ANSI.PURP + " ___  ___ ___  __ _ _ __ ___  _   _ _ __ ___"
+    print "/ __|/ _ / __|/ _` | '_ ` _ \| | | | '_ ` _ \\"
+    print "\__ |  __\__ | (_| | | | | | | |_| | | | | | |"
+    print "|___/\___|___/\__,_|_| |_| |_|\__,_|_| |_| |_|\n" + ANSI.ENDC
 
-def get_args():
-    parser = argparse.ArgumentParser(
-            description='Using your public IP, temporarily poke holes in an EC2 security group',
-            epilog='Example: sesamum.py -r us-east-1 -p production foo:22,443 bar:0-65535')
-    parser.add_argument('-d', '--dryrun', default=False, action='store_true')
-    parser.add_argument('-r', '--region', default='us-west-2')
-    parser.add_argument('-p', '--profile', default='staging')
-    parser.add_argument('-l', '--list', action='store_true')
-    parser.add_argument('ports', nargs='*')
-    return parser.parse_args()
+    configuration = get_configuration(config)
+    conn = get_ec2_connection(region, profile)
+
+    if list_groups:
+        list_security_groups(conn)
+        sys.exit(0)
+
+    groups = parse_groups(ports)
+
+    if len(groups) < 1:
+        print ANSI.RED + "Please specify one or more security groups + ports to operate on." + ANSI.ENDC
+        print ANSI.RED + "eg: `sesamum -r us-east-1 -p production foo:22,443 bar:0-65535`" + ANSI.ENDC
+        print ANSI.RED + "see `sesamum --help` for options." + ANSI.ENDC
+        sys.exit(1)
+
+    ip = get_public_ip()
+    if ip in configuration.get('main', 'blacklisted_ips').split(','):
+        print "%sCurrent public IP (%s) is blacklisted -- see `%s` %s" % (ANSI.RED, ip, config, ANSI.ENDC)
+        sys.exit(1)
+
+    update_security_group(conn, profile, region, ip, groups, dry_run)
 
 
 def get_configuration(file):
@@ -48,7 +64,7 @@ def get_ec2_connection(region, profile):
 def parse_groups(ports):
     # drop malformed port args, then build up a dict of security groups to operate on
     # {'i-1234567': ['1123', '5813'], 'foo': ['1123']}
-    ports[:] = [el for el in ports if ':' in el]
+    ports = [el for el in ports if ':' in el]
     groups = dict([el.split(':') for el in ports])
     for group in groups:
         groups[group] = groups[group].split(',')
@@ -114,7 +130,7 @@ def revoke_inbound_rule(security_group, ip_range, port):
         return(1)
 
 
-def update_security_group(conn, profile, region, ip, groups, dry_run=False):
+def update_security_group(conn, profile, region, ip, groups, dry_run):
 
     ip_range = '%s/32' % ip
 
@@ -132,7 +148,6 @@ def update_security_group(conn, profile, region, ip, groups, dry_run=False):
 
             for instance in security_group.instances():
                 print "  %s [%s]" % (instance.tags['Name'], instance.id)
-
 
     # wait
     print '\n' + ANSI.GREEN + 'PRESS `ENTER` TO REVERT' + ANSI.ENDC
@@ -153,31 +168,11 @@ def update_security_group(conn, profile, region, ip, groups, dry_run=False):
         for instance in security_group.instances():
             print "  %s [%s]" % (instance.tags['Name'], instance.id)
 
-if __name__ == '__main__':
 
-    print ANSI.PURP + " ___  ___ ___  __ _ _ __ ___  _   _ _ __ ___"
-    print "/ __|/ _ / __|/ _` | '_ ` _ \| | | | '_ ` _ \\"
-    print "\__ |  __\__ | (_| | | | | | | |_| | | | | | |"
-    print "|___/\___|___/\__,_|_| |_| |_|\__,_|_| |_| |_|\n" + ANSI.ENDC
-
-    args = get_args()
-    configuration = get_configuration('sesamum.conf')
-    conn = get_ec2_connection(args.region, args.profile)
-
-    if args.list:
-        list_security_groups(conn)
-        sys.exit(0)
-
-    groups = parse_groups(args.ports)
-
-    if len(groups) < 1:
-        print ANSI.RED + "Please specify one or more security groups + ports to operate on." + ANSI.ENDC
-        print ANSI.RED + "See `sesamum.py --help` for options." + ANSI.ENDC
-        sys.exit(1)
-
-    ip = get_public_ip()
-    if ip in configuration.get('main', 'blacklisted_ips').split(','):
-        print "%sCurrent public IP (%s) is blacklisted -- see `sesamum.conf` %s" % (ANSI.RED, ip, ANSI.ENDC)
-        sys.exit(1)
-
-    update_security_group(conn, args.profile, args.region, ip, groups, args.dryrun)
+# cli colors
+class ANSI:
+    PURP = '\033[95m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    ENDC = '\033[0m'

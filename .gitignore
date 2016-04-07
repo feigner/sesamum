@@ -1,3 +1,4 @@
 *.pyc
 env
 sesamum.conf
+*.egg-info
