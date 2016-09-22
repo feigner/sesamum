@@ -73,8 +73,10 @@ def parse_groups(ports):
 
 
 def get_public_ip():
+    #ip_service = 'http://checkip.amazonaws.com'
+    ip_service = 'http://ipinfo.io/ip'
     headers = {'User-Agent': 'Lynx/2.8.8dev.3 libwww-FM/2.14 LOL/4.2.0 SSL-MM/1.4.1'}
-    return urllib2.urlopen(urllib2.Request('http://checkip.amazonaws.com', None, headers)).read().strip()
+    return urllib2.urlopen(urllib2.Request(ip_service, None, headers)).read().strip()
 
 
 def lookup_security_group(conn, label):
